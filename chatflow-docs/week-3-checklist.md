@@ -12,12 +12,13 @@
 - [x] Workflow status and generated messages are published to the conversation topic.
 - [x] Automated tests cover workflow wait/input/conditional routing/generated messages and owner isolation.
 - [x] STOMP interceptor tests cover valid JWT connection, missing token rejection, and cross-user subscription rejection.
+- [x] End-to-end WebSocket test opens a real JDK WebSocket connection, sends STOMP CONNECT/SUBSCRIBE frames, posts a REST message, and receives the `message.created` event.
 - [x] GitHub Actions validates Flyway V1/V2 against MySQL 8 and runs a workflow from WAITING through input/condition to SUCCESS against MySQL.
 
 ## Latest CI evidence
-- Backend CI: 8 tests passed, 0 failures, 0 errors.
+- Backend CI: 9 tests passed, 0 failures, 0 errors.
 - MySQL integration CI: Compose validation, MySQL/Redis startup, both Flyway migrations, REST message persistence, workflow definition/run/node history, WAITING -> input -> condition -> SUCCESS all passed.
-- The CI tests validate the interceptor and workflow engine; a full Android client-to-server STOMP end-to-end run is not yet included.
+- The CI includes a real WebSocket/STOMP message-delivery test; Android UI integration remains for Week 4.
 
 ## Explicit limitations
 - HTTP_REQUEST nodes are not enabled until an outbound-host allowlist is implemented.
