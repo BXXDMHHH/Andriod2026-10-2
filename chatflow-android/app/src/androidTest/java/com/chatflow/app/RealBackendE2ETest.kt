@@ -35,7 +35,7 @@ class RealBackendE2ETest {
         composeRule.onNodeWithText("ChatFlow").assertIsDisplayed()
         composeRule.onNodeWithText("用户名").performClick().performTextInput(username)
         composeRule.onNodeWithText("密码").performClick().performTextInput(password)
-        composeRule.onNodeWithText("登录").performClick()
+        composeRule.onAllNodesWithText("登录").onLast().performClick()
         composeRule.waitUntil(timeoutMillis = 20_000) { composeRule.onAllNodesWithText("会话").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("新建").performClick()
         composeRule.waitUntil(timeoutMillis = 15_000) { composeRule.onAllNodesWithText("输入消息").fetchSemanticsNodes().isNotEmpty() }
