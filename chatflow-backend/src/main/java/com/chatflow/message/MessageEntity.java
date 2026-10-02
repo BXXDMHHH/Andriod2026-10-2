@@ -13,7 +13,8 @@ public class MessageEntity {
  @Column(name="client_msg_id",length=100) private String clientMsgId;
  @Column(name="created_at",nullable=false) private LocalDateTime createdAt;
  protected MessageEntity(){}
- public MessageEntity(ConversationEntity c,Long senderId,String content,String clientMsgId){this.conversation=c;this.senderType="USER";this.senderId=senderId;this.contentType="TEXT";this.content=content;this.clientMsgId=clientMsgId;}
+ public MessageEntity(ConversationEntity c,Long senderId,String content,String clientMsgId){this(c,senderId,"USER",content,clientMsgId);}
+ public MessageEntity(ConversationEntity c,Long senderId,String senderType,String content,String clientMsgId){this.conversation=c;this.senderId=senderId;this.senderType=senderType;this.contentType="TEXT";this.content=content;this.clientMsgId=clientMsgId;}
  @PrePersist void onCreate(){createdAt=LocalDateTime.now();}
- public Long getId(){return id;}public ConversationEntity getConversation(){return conversation;}public String getSenderType(){return senderType;}public Long getSenderId(){return senderId;}public String getContentType(){return contentType;}public String getContent(){return content;}public String getClientMsgId(){return clientMsgId;}public LocalDateTime getCreatedAt(){return createdAt;}
+ public Long getId(){return id;} public ConversationEntity getConversation(){return conversation;} public String getSenderType(){return senderType;} public Long getSenderId(){return senderId;} public String getContentType(){return contentType;} public String getContent(){return content;} public String getClientMsgId(){return clientMsgId;} public LocalDateTime getCreatedAt(){return createdAt;}
 }

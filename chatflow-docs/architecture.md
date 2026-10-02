@@ -1,47 +1,33 @@
-# Architecture (Week 1)
+# Architecture (Updated Week 3)
 
 ## System context
-
 ```text
 Android app (Kotlin + Compose)
-  | REST / future WebSocket
+  | REST API and STOMP over WebSocket
   v
-Spring Boot monolith (Java 17)
-  | JPA / future Flyway migrations
+Spring Boot monolith
+  | JPA / Flyway
   v
 MySQL 8 ---- Redis 7 (optional cache / rate limiting)
 ```
 
-## Backend package plan
-Base package: `com.chatflow`
-- `common`: shared response types, errors, constants
-- `config`: security, web, websocket, OpenAPI and serialization configuration
-- `auth`: registration, login and token lifecycle
-- `user`: user profile
-- `conversation`: conversation lifecycle
-- `message`: message persistence and history
-- `workflow`: workflow definitions, execution and run records
-- `file`: attachment metadata and uploads
-- `websocket`: real-time push
+## Backend packages
+- `auth`, `user`: registration, login and JWT
+- `conversation`, `message`: owned conversations, persistence, message history and realtime events
+- `websocket`: STOMP endpoint, JWT CONNECT validation and conversation-topic ownership checks
+- `workflow`: definitions, execution engine, workflow runs and node-run audit records
 
-Week 1 contains only the application entry point; business packages will be introduced with their corresponding features.
+## Realtime protocol
+- WebSocket/STOMP endpoint: `/ws`
+- Clients send a JWT bearer token in the STOMP CONNECT native header.
+- Clients subscribe to `/topic/conversations/{id}`; the interceptor checks that the authenticated user owns the conversation.
+- REST message saves and workflow status transitions publish JSON events to the conversation topic.
+- The simple broker is in-memory and intended for a single backend instance.
 
-## Android package plan
-- `data/remote`: Retrofit, WebSocket and DTOs
-- `data/local`: Room and DataStore
-- `data/repository`: repository implementations
-- `domain/model`, `domain/repository`, `domain/usecase`
-- `ui/auth`, `ui/conversation`, `ui/chat`, `ui/workflow`, `ui/settings`
-- `di`: Hilt modules
-- `common`: shared utilities and constants
+## Workflow engine
+Definitions are JSON graphs with nodes and directed edges. The synchronous MVP engine supports START, SEND_MESSAGE, WAIT_INPUT, CONDITION, SET_VARIABLE, DELAY and END. WAIT_INPUT persists the current node and variables; a subsequent input request resumes from the outgoing edge. Each node execution is persisted in `workflow_node_runs`. A 100-node cap prevents runaway loops, and DELAY is capped at 5 seconds.
 
-The initial Android app is a minimal Compose shell, not a completed chat client.
+## Security and quality gates
+REST routes continue to require JWT except public registration/login and health endpoints. WebSocket CONNECT validates JWT and subscriptions enforce conversation ownership. GitHub Actions runs Maven verification and MySQL/Redis Compose smoke tests; workflow integration tests exercise waiting, input, conditional routing and generated messages.
 
-## Local services
-Docker Compose provides MySQL 8 and Redis 7. Backend defaults target localhost:3306 and localhost:6379; credentials in Compose are development-only. Production secrets and HTTPS configuration are not part of this scaffold.
-
-## Planned message flow
-Android sends a message -> REST endpoint validates ownership -> service persists message -> workflow engine optionally runs -> generated message is persisted -> WebSocket event is published -> Android updates UI and local cache.
-
-## Quality gates
-GitHub Actions runs Maven verification and Android debug assembly on pushes and pull requests. These gates check compilation/build packaging, not end-to-end behavior or emulator UI correctness.
+Known MVP limits: no HTTP_REQUEST workflow node until outbound host allowlisting is implemented; no distributed broker relay, asynchronous job scheduler, or retry policy.
