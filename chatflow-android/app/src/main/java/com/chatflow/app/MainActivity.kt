@@ -99,7 +99,7 @@ private fun ChatScreen(screen: Screen.Chat, state: MainUiState, vm: MainViewMode
 
     Scaffold(topBar = {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = { vm.loadConversations(); vm.logout() }) { Text("退出") }
+            TextButton(onClick = vm::backToConversations) { Text("返回") }
             Column(Modifier.weight(1f)) {
                 Text(screen.title, style = MaterialTheme.typography.titleLarge)
                 Text(state.wsStatus, style = MaterialTheme.typography.bodySmall)
