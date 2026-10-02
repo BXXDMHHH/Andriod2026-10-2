@@ -48,6 +48,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun goRegister() { state.value = state.value.copy(screen = Screen.Register, password = "", error = null) }
     fun goLogin() { state.value = state.value.copy(screen = Screen.Login, password = "", error = null) }
     fun backToConversations() {
+        reconnectJob?.cancel()
+        reconnectJob = null
         socket?.close(1000, "back")
         socket = null
         state.value = state.value.copy(screen = Screen.Conversations, messages = emptyList(), activeRun = null, error = null, wsStatus = "未连接")
@@ -83,16 +85,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .onFailure { state.value = state.value.copy(error = it.message ?: "创建会话失败") }
         }
     }
-    fun openChat(conversation: Conversation) = openChat(conversation.id, conversation.title)
-    fun openChat(id: Long, title: String) {
+    fun openChat(conversation: Conversation) = openChat(conversation.id, conversation.title, true)
+    fun openChat(id: Long, title: String, resetReconnect: Boolean = true) {
         state.value = state.value.copy(screen = Screen.Chat(id, title), messages = emptyList(), activeRun = null, error = null, wsStatus = "连接中")
         viewModelScope.launch {
             runCatching { client.api.messages(id) }
                 .onSuccess { state.value = state.value.copy(messages = it.sortedBy { msg -> msg.createdAt }) }
                 .onFailure { state.value = state.value.copy(error = it.message ?: "历史消息加载失败") }
         }
-        reconnectJob?.cancel()
-        reconnectAttempt = 0
+        if (resetReconnect) {
+            reconnectJob?.cancel()
+            reconnectAttempt = 0
+        }
         socket?.close(1000, "switch conversation")
         socket = client.connect(id, { message ->
             if (state.value.screen is Screen.Chat && (state.value.screen as Screen.Chat).conversationId == id &&
@@ -112,7 +116,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         reconnectJob = viewModelScope.launch {
             state.value = state.value.copy(wsStatus = "将在 ${delayMs / 1000} 秒后重连")
             delay(delayMs)
-            if (state.value.screen is Screen.Chat) openChat(id, title)
+            if (state.value.screen is Screen.Chat) openChat(id, title, false)
         }
     }
 
