@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.chatflow.app.data.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okhttp3.WebSocket
 
@@ -29,8 +31,10 @@ data class MainUiState(
 )
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val store = SessionStore(app)
-    private val client = ChatFlowClient(app)
+    private val client = ChatFlowClient(app) { logout() }
     private var socket: WebSocket? = null
+    private var reconnectJob: Job? = null
+    private var reconnectAttempt = 0
     var state = mutableStateOf(MainUiState())
         private set
 
@@ -87,14 +91,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess { state.value = state.value.copy(messages = it.sortedBy { msg -> msg.createdAt }) }
                 .onFailure { state.value = state.value.copy(error = it.message ?: "历史消息加载失败") }
         }
+        reconnectJob?.cancel()
+        reconnectAttempt = 0
         socket?.close(1000, "switch conversation")
         socket = client.connect(id, { message ->
             if (state.value.screen is Screen.Chat && (state.value.screen as Screen.Chat).conversationId == id &&
                 state.value.messages.none { it.id == message.id }) {
                 state.value = state.value.copy(messages = state.value.messages + message)
             }
-        }, { status -> state.value = state.value.copy(wsStatus = status) })
+        }, { status ->
+            state.value = state.value.copy(wsStatus = status)
+            if (status.startsWith("连接失败")) scheduleReconnect(id, title)
+        })
     }
+    private fun scheduleReconnect(id: Long, title: String) {
+        if (state.value.screen !is Screen.Chat || (state.value.screen as Screen.Chat).conversationId != id || store.token == null) return
+        reconnectJob?.cancel()
+        val delayMs = (1000L shl reconnectAttempt.coerceAtMost(4)).coerceAtMost(15000L)
+        reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(5)
+        reconnectJob = viewModelScope.launch {
+            state.value = state.value.copy(wsStatus = "将在 ${delayMs / 1000} 秒后重连")
+            delay(delayMs)
+            if (state.value.screen is Screen.Chat) openChat(id, title)
+        }
+    }
+
     fun send(text: String) {
         val screen = state.value.screen as? Screen.Chat ?: return
         if (text.isBlank()) return
@@ -133,7 +154,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
     fun logout() {
+        reconnectJob?.cancel()
+        reconnectJob = null
         socket?.close(1000, "logout"); socket = null; store.clear(); state.value = MainUiState()
     }
-    override fun onCleared() { socket?.close(1000, "viewmodel cleared"); super.onCleared() }
+    override fun onCleared() { reconnectJob?.cancel(); socket?.close(1000, "viewmodel cleared"); super.onCleared() }
 }
