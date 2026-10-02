@@ -94,7 +94,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             runCatching { client.api.messages(id) }
                 .onSuccess { messages ->
                     val sorted = messages.sortedBy { msg -> msg.createdAt }
-                    messageDeduplicator.seed(sorted)
+                    messageDeduplicator.seed(sorted.map { it.id })
                     state.value = state.value.copy(messages = sorted)
                 }
                 .onFailure { state.value = state.value.copy(error = it.message ?: "历史消息加载失败") }
@@ -106,7 +106,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         socket?.close(1000, "switch conversation")
         socket = client.connect(id, { message ->
             if (state.value.screen is Screen.Chat && (state.value.screen as Screen.Chat).conversationId == id &&
-                messageDeduplicator.accept(message)) {
+                messageDeduplicator.accept(message.id)) {
                 state.value = state.value.copy(messages = state.value.messages + message)
             }
         }, { status ->
@@ -133,7 +133,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { client.api.sendMessage(screen.conversationId, SendMessageRequest(text, client.clientMessageId())) }
                 .onSuccess { sent ->
-                    if (messageDeduplicator.accept(sent)) state.value = state.value.copy(messages = state.value.messages + sent)
+                    if (messageDeduplicator.accept(sent.id)) state.value = state.value.copy(messages = state.value.messages + sent)
                 }
                 .onFailure { state.value = state.value.copy(error = it.message ?: "发送失败") }
                 .also { state.value = state.value.copy(sending = false) }
