@@ -51,3 +51,10 @@ Room 离线数据库、推送通知、多媒体消息、复杂工作流编辑器
 ## 当前验证边界
 
 代码和 CI 流程已闭环配置，但当前会话环境无法直接执行 GitHub Actions Runner，因此尚未把该次提交标记为“CI 已通过”。最终通过条件是 Android assemble/unit/instrumentation、真实后端 E2E 与 MySQL integration smoke 全部成功。
+
+### 稳定性收尾实现
+
+- `MessageDeduplicator` 统一处理历史消息与 WebSocket/REST 回来的重复 `message.id`。
+- `ReconnectBackoff` 固化 1/2/4/8/15 秒退避，并增加 JVM 单测。
+- Chat 返回、退出登录、ViewModel 清理均关闭 WebSocket 并取消重连任务；真实 E2E 增加返回会话页断言。
+- 网络异常已有失败重连路径；“系统级网络断开→恢复”仍需 Android Emulator Runner 实际切换网络后验证，因此不标记为已通过。
