@@ -5,10 +5,16 @@ on:
     paths:
       - "chatflow-android/**"
       - ".github/workflows/android.yml"
+      - "chatflow-backend/**"
+      - "chatflow-deploy/**"
+      - ".github/scripts/**"
   pull_request:
     paths:
       - "chatflow-android/**"
       - ".github/workflows/android.yml"
+      - "chatflow-backend/**"
+      - "chatflow-deploy/**"
+      - ".github/scripts/**"
   workflow_dispatch:
 
 jobs:
@@ -103,7 +109,7 @@ jobs:
           arch: x86_64
           profile: pixel_2
           working-directory: chatflow-android
-          script: gradle connectedDebugAndroidTest --tests com.chatflow.app.RealBackendE2ETest
+          script: gradle connectedDebugAndroidTest
       - name: Show backend logs
         if: always()
         run: |
