@@ -43,7 +43,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun updateCredentials(username: String, password: String) { state.value = state.value.copy(username = username, password = password, error = null) }
     fun goRegister() { state.value = state.value.copy(screen = Screen.Register, password = "", error = null) }
     fun goLogin() { state.value = state.value.copy(screen = Screen.Login, password = "", error = null) }
-
+    fun backToConversations() {
+        socket?.close(1000, "back")
+        socket = null
+        state.value = state.value.copy(screen = Screen.Conversations, messages = emptyList(), activeRun = null, error = null, wsStatus = "未连接")
+        loadConversations()
+    }
     fun login(register: Boolean = false) {
         val s = state.value
         if (s.username.isBlank() || s.password.isBlank()) { state.value = s.copy(error = "请输入用户名和密码"); return }
