@@ -3,13 +3,10 @@ package com.chatflow.app.data
 class MessageDeduplicator {
     private val ids = LinkedHashSet<Long>()
 
-    fun accept(message: Message): Boolean {
-        if (!ids.add(message.id)) return false
-        return true
-    }
+    fun accept(id: Long): Boolean = ids.add(id)
 
-    fun seed(messages: Collection<Message>) {
-        messages.forEach { ids.add(it.id) }
+    fun seed(ids: Collection<Long>) {
+        this.ids.addAll(ids)
     }
 
     fun clear() {
