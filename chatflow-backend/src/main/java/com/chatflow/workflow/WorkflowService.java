@@ -20,8 +20,8 @@ import java.util.regex.Pattern;
 @Service
 public class WorkflowService {
  private static final Set<String> NODE_TYPES=Set.of("START","SEND_MESSAGE","WAIT_INPUT","CONDITION","SET_VARIABLE","DELAY","END");
- private static final Pattern EXPRESSION=Pattern.compile("^\\\\s*([A-Za-z_][A-Za-z0-9_.-]*)\\\\s*(==|!=|contains)\\\\s*['\\\"](.*?)['\\\"]\\\\s*$");
- private static final Pattern PLACEHOLDER=Pattern.compile("\\\\$\\\\{([A-Za-z_][A-Za-z0-9_.-]*)}");
+ private static final Pattern EXPRESSION=Pattern.compile("^\\s*([A-Za-z_][A-Za-z0-9_.-]*)\\s*(==|!=|contains)\\s*'(.*?)'\\s*$");
+ private static final Pattern PLACEHOLDER=Pattern.compile("\\$\\{([A-Za-z_][A-Za-z0-9_.-]*)}");
  private final WorkflowRepository workflows; private final WorkflowRunRepository runs; private final WorkflowNodeRunRepository nodeRuns;
  private final UserRepository users; private final ConversationService conversations; private final MessageService messages;
  private final ObjectMapper mapper; private final SimpMessagingTemplate broker;
