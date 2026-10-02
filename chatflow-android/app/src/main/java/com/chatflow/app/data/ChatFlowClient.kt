@@ -38,15 +38,15 @@ class ChatFlowClient(context: Context) {
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
                 when {
-                    text.startsWith("CONNECTED") -> {
+                    StompMessageParser.isConnected(text) -> {
                         onStatus("已连接")
                         webSocket.send("SUBSCRIBE\\nid:sub-$conversationId\\ndestination:/topic/conversations/$conversationId\\nack:auto\\n\\n\\u0000")
                     }
-                    text.startsWith("MESSAGE") -> {
+                    StompMessageParser.messageBody(text) != null -> {
                         val body = text.substringAfter("\\n\\n", "").trimEnd('\\u0000')
                         runCatching { gson.fromJson(body, Message::class.java) }.getOrNull()?.let(onMessage)
                     }
-                    text.startsWith("ERROR") -> onStatus("WebSocket 鉴权/订阅失败")
+                    StompMessageParser.isError(text) -> onStatus("WebSocket 鉴权/订阅失败")
                 }
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
