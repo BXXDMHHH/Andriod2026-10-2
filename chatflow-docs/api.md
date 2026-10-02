@@ -1,68 +1,33 @@
-# REST API Contract (planned)
-
-Base prefix: `/api/v1`. This document records the planned contract; endpoints are not implemented in Week 1.
-
-## Response envelope
-```json
-{
-  "code": 0,
-  "message": "success",
-  "data": {},
-  "traceId": "request-correlation-id"
-}
-```
-
+# REST API Contract
+Base prefix: `/api/v1`. Week 2 implemented endpoints are marked below. Responses currently use direct JSON DTOs; the common response envelope in the original design is not yet applied.
 ## Authentication
-| Method | Path | Purpose |
-| --- | --- | --- |
-| POST | `/auth/register` | Register |
-| POST | `/auth/login` | Login |
-| POST | `/auth/refresh` | Refresh token |
-| POST | `/auth/logout` | Logout |
-| GET | `/auth/me` | Current user |
-
+| Method | Path | Purpose | Status |
+|---|---|---|---|
+| POST | `/auth/register` | Register and return JWT access token | Implemented |
+| POST | `/auth/login` | Login and return JWT access token | Implemented |
+| GET | `/auth/me` | Current authenticated user | Implemented |
+| POST | `/auth/refresh` | Refresh token | Planned |
+| POST | `/auth/logout` | Revoke token | Planned |
+Registration accepts `{"username":"alice","password":"at-least-8-chars","nickname":"Alice"}`. Usernames are 3–64 chars and accept letters, digits, underscore, dot, hyphen. Passwords are 8–72 chars and stored as BCrypt hashes.
 ## Conversations
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/conversations` | List conversations |
-| POST | `/conversations` | Create conversation |
-| GET | `/conversations/{id}` | Get conversation |
-| PATCH | `/conversations/{id}` | Update title/pin |
-| DELETE | `/conversations/{id}` | Delete conversation |
-
+| Method | Path | Purpose | Status |
+|---|---|---|---|
+| GET | `/conversations` | List current user's conversations | Implemented |
+| POST | `/conversations` | Create conversation | Implemented |
+| GET | `/conversations/{id}` | Get owned conversation | Implemented |
+| PATCH | `/conversations/{id}` | Update title/pin | Planned |
+| DELETE | `/conversations/{id}` | Delete conversation | Planned |
+Create request: `{"title":"New conversation"}`.
 ## Messages
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/conversations/{id}/messages?before=&limit=` | Paginated history |
-| POST | `/conversations/{id}/messages` | Send text message |
-| POST | `/messages/{id}/read` | Mark read |
-| GET | `/messages/search?keyword=` | Search (optional) |
-
-## Workflows
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/workflows` | List workflows |
-| GET | `/workflows/{id}` | Workflow detail |
-| POST | `/workflows/{id}/run` | Start run |
-| GET | `/workflow-runs/{id}` | Run status |
-| POST | `/workflow-runs/{id}/cancel` | Cancel run |
-| POST | `/workflow-runs/{id}/input` | Resume waiting run |
-
-## Files and health
-- POST `/files/upload`
-- GET `/files/{id}`
+| Method | Path | Purpose | Status |
+|---|---|---|---|
+| GET | `/conversations/{id}/messages?before=&limit=50` | Paginated history | Implemented |
+| POST | `/conversations/{id}/messages` | Send text message | Implemented |
+| POST | `/messages/{id}/read` | Mark read | Planned |
+| GET | `/messages/search?keyword=` | Search | Planned |
+Send request: `{"content":"Hello","clientMsgId":"optional-client-id"}`. History pages are returned oldest-first within the page; limit is clamped to 1–100. Assistant replies and WebSocket delivery are later milestones.
+## Health and security
 - GET `/actuator/health`
 - GET `/actuator/info`
-- GET `/actuator/metrics`
-
-## WebSocket contract (planned)
-Endpoint: `/ws` (STOMP). Planned subscriptions: `/user/queue/messages`, `/user/queue/flow`, and `/topic/conversations/{id}`. Planned application destinations: `/app/chat.send`, `/app/flow.input`, `/app/chat.typing`, `/app/chat.read`.
-
-Planned events: `MESSAGE_CREATED`, `MESSAGE_UPDATED`, `MESSAGE_READ`, `TYPING`, `FLOW_RUN_STATUS`, `FLOW_NODE_STATUS`, `ERROR`.
-
-## Error codes (planned)
-- 0 success; 1001 invalid parameters
-- 2001 unauthenticated; 2002 expired token; 2003 invalid token
-- 3001 forbidden; 4001 not found; 4002 duplicate request
-- 5001 invalid workflow; 5002 node execution failed; 5003 input timeout; 5004 run canceled
-- 9001 internal error
+All endpoints except registration, login, health and info require `Authorization: Bearer <accessToken>`. Conversation detail/history/send routes enforce ownership. JWT access tokens expire after 3600 seconds by default. Set `JWT_SECRET` to a strong base64-encoded secret outside development. Refresh/revocation, rate limiting, and password reset are not implemented.
+Workflow APIs, file APIs and WebSocket endpoint `/ws` are planned for later weeks.
