@@ -1,14 +1,18 @@
-name: Deployment Dependencies CI
+name: Deployment and MySQL Integration CI
 
 on:
   push:
     paths:
+      - "chatflow-backend/**"
       - "chatflow-deploy/**"
       - ".github/workflows/deploy.yml"
+      - ".github/scripts/mysql_api_smoke.py"
   pull_request:
     paths:
+      - "chatflow-backend/**"
       - "chatflow-deploy/**"
       - ".github/workflows/deploy.yml"
+      - ".github/scripts/mysql_api_smoke.py"
   workflow_dispatch:
 
 jobs:
@@ -16,6 +20,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          cache-dependency-path: chatflow-backend/pom.xml
       - name: Validate Compose configuration
         run: docker compose -f chatflow-deploy/docker-compose.yml config --quiet
       - name: Start MySQL and Redis
@@ -24,9 +34,22 @@ jobs:
         run: docker compose -f chatflow-deploy/docker-compose.yml exec -T mysql mysql --user=chatflow --password=chatflow_dev_password --database=chatflow --execute="SELECT 1;"
       - name: Verify Redis responds to PING
         run: test "$(docker compose -f chatflow-deploy/docker-compose.yml exec -T redis redis-cli ping | tr -d '\r')" = "PONG"
-      - name: Show service status
+      - name: Start Spring Boot against MySQL
+        env:
+          DB_URL: jdbc:mysql://127.0.0.1:3306/chatflow?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+          DB_USERNAME: chatflow
+          DB_PASSWORD: chatflow_dev_password
+        run: |
+          nohup mvn -q -f chatflow-backend/pom.xml spring-boot:run > /tmp/chatflow-backend.log 2>&1 &
+          echo $! > /tmp/chatflow-backend.pid
+          python .github/scripts/wait_for_backend.py
+      - name: Exercise API against MySQL
+        run: python .github/scripts/mysql_api_smoke.py
+      - name: Show service status and backend logs
         if: always()
-        run: docker compose -f chatflow-deploy/docker-compose.yml ps
+        run: |
+          docker compose -f chatflow-deploy/docker-compose.yml ps
+          if [ -f /tmp/chatflow-backend.log ]; then tail -n 100 /tmp/chatflow-backend.log; fi
       - name: Stop services
         if: always()
         run: docker compose -f chatflow-deploy/docker-compose.yml down -v
