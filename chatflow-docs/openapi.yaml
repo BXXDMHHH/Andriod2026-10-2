@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: ChatFlow REST API
+  version: 0.5.0
+servers:
+  - url: /api/v1
+paths:
+  /auth/register:
+    post:
+      summary: Register
+      responses: { '200': { description: Registered } }
+  /auth/login:
+    post:
+      summary: Login
+      responses: { '200': { description: Logged in } }
+  /auth/me:
+    get:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Current user } }
+  /conversations:
+    get:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Conversation list } }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Conversation created } }
+  /conversations/{id}/messages:
+    get:
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+        - { name: before, in: query, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
+      responses: { '200': { description: Message history } }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Message created } }
+  /workflows:
+    get:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Workflow list } }
+    post:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Workflow created } }
+  /workflows/{id}/run:
+    post:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Workflow started } }
+  /workflow-runs/{id}:
+    get:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Workflow run state } }
+  /workflow-runs/{id}/input:
+    post:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Workflow resumed } }
+  /workflow-runs/{id}/cancel:
+    post:
+      security: [{ bearerAuth: [] }]
+      responses: { '200': { description: Workflow cancelled } }
+  /actuator/health:
+    get:
+      responses: { '200': { description: Service health } }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
