@@ -33,18 +33,24 @@ class ChatFlowClient(context: Context) {
         val request = Request.Builder().url(BuildConfig.WS_URL).build()
         return http.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: okhttp3.Response) {
-                onStatus("已连接")
-                webSocket.send("CONNECT\naccept-version:1.2\nAuthorization:Bearer $token\nheart-beat:10000,10000\n\n\u0000")
-                webSocket.send("SUBSCRIBE\nid:sub-$conversationId\ndestination:/topic/conversations/$conversationId\nack:auto\n\n\u0000")
+                onStatus("连接中")
+                webSocket.send("CONNECT\\naccept-version:1.2\\nAuthorization:Bearer $token\\nheart-beat:10000,10000\\n\\n\\u0000")
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
-                if (text.startsWith("MESSAGE")) {
-                    val body = text.substringAfter("\n\n").trimEnd('\u0000')
-                    runCatching { gson.fromJson(body, Message::class.java) }.getOrNull()?.let(onMessage)
-                } else if (text.startsWith("ERROR")) onStatus("WebSocket 鉴权/订阅失败")
+                when {
+                    text.startsWith("CONNECTED") -> {
+                        onStatus("已连接")
+                        webSocket.send("SUBSCRIBE\\nid:sub-$conversationId\\ndestination:/topic/conversations/$conversationId\\nack:auto\\n\\n\\u0000")
+                    }
+                    text.startsWith("MESSAGE") -> {
+                        val body = text.substringAfter("\\n\\n", "").trimEnd('\\u0000')
+                        runCatching { gson.fromJson(body, Message::class.java) }.getOrNull()?.let(onMessage)
+                    }
+                    text.startsWith("ERROR") -> onStatus("WebSocket 鉴权/订阅失败")
+                }
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: okhttp3.Response?) {
-                onStatus("连接失败: ${t.message ?: "未知错误"}")
+                onStatus("连接失败: " + (t.message ?: "未知错误"))
             }
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) { onStatus("已断开") }
         })
