@@ -1,0 +1,32 @@
+name: Deployment Dependencies CI
+
+on:
+  push:
+    paths:
+      - "chatflow-deploy/**"
+      - ".github/workflows/deploy.yml"
+  pull_request:
+    paths:
+      - "chatflow-deploy/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+jobs:
+  compose-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose configuration
+        run: docker compose -f chatflow-deploy/docker-compose.yml config --quiet
+      - name: Start MySQL and Redis
+        run: docker compose -f chatflow-deploy/docker-compose.yml up -d --wait
+      - name: Verify MySQL responds to a query
+        run: docker compose -f chatflow-deploy/docker-compose.yml exec -T mysql mysql --user=chatflow --password=chatflow_dev_password --database=chatflow --execute="SELECT 1;"
+      - name: Verify Redis responds to PING
+        run: test "$(docker compose -f chatflow-deploy/docker-compose.yml exec -T redis redis-cli ping | tr -d '\r')" = "PONG"
+      - name: Show service status
+        if: always()
+        run: docker compose -f chatflow-deploy/docker-compose.yml ps
+      - name: Stop services
+        if: always()
+        run: docker compose -f chatflow-deploy/docker-compose.yml down -v
