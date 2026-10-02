@@ -35,6 +35,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var socket: WebSocket? = null
     private var reconnectJob: Job? = null
     private var reconnectAttempt = 0
+    private val messageDeduplicator = MessageDeduplicator()
     var state = mutableStateOf(MainUiState())
         private set
 
@@ -87,10 +88,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
     fun openChat(conversation: Conversation) = openChat(conversation.id, conversation.title, true)
     fun openChat(id: Long, title: String, resetReconnect: Boolean = true) {
+        messageDeduplicator.clear()
         state.value = state.value.copy(screen = Screen.Chat(id, title), messages = emptyList(), activeRun = null, error = null, wsStatus = "连接中")
         viewModelScope.launch {
             runCatching { client.api.messages(id) }
-                .onSuccess { state.value = state.value.copy(messages = it.sortedBy { msg -> msg.createdAt }) }
+                .onSuccess { messages ->
+                    val sorted = messages.sortedBy { msg -> msg.createdAt }
+                    messageDeduplicator.seed(sorted)
+                    state.value = state.value.copy(messages = sorted)
+                }
                 .onFailure { state.value = state.value.copy(error = it.message ?: "历史消息加载失败") }
         }
         if (resetReconnect) {
@@ -100,7 +106,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         socket?.close(1000, "switch conversation")
         socket = client.connect(id, { message ->
             if (state.value.screen is Screen.Chat && (state.value.screen as Screen.Chat).conversationId == id &&
-                state.value.messages.none { it.id == message.id }) {
+                messageDeduplicator.accept(message)) {
                 state.value = state.value.copy(messages = state.value.messages + message)
             }
         }, { status ->
@@ -111,7 +117,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun scheduleReconnect(id: Long, title: String) {
         if (state.value.screen !is Screen.Chat || (state.value.screen as Screen.Chat).conversationId != id || store.token == null) return
         reconnectJob?.cancel()
-        val delayMs = (1000L shl reconnectAttempt.coerceAtMost(4)).coerceAtMost(15000L)
+        val delayMs = ReconnectBackoff.delayMs(reconnectAttempt)
         reconnectAttempt = (reconnectAttempt + 1).coerceAtMost(5)
         reconnectJob = viewModelScope.launch {
             state.value = state.value.copy(wsStatus = "将在 ${delayMs / 1000} 秒后重连")
@@ -127,7 +133,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             runCatching { client.api.sendMessage(screen.conversationId, SendMessageRequest(text, client.clientMessageId())) }
                 .onSuccess { sent ->
-                    if (state.value.messages.none { it.id == sent.id }) state.value = state.value.copy(messages = state.value.messages + sent)
+                    if (messageDeduplicator.accept(sent)) state.value = state.value.copy(messages = state.value.messages + sent)
                 }
                 .onFailure { state.value = state.value.copy(error = it.message ?: "发送失败") }
                 .also { state.value = state.value.copy(sending = false) }
