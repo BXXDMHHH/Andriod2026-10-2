@@ -53,6 +53,8 @@ class RealBackendE2ETest {
         composeRule.onNodeWithText("提交").performClick()
         composeRule.waitUntil(timeoutMillis = 15_000) { composeRule.onAllNodesWithText("工作流：SUCCESS").fetchSemanticsNodes().isNotEmpty() }
         composeRule.onNodeWithText("工作流：SUCCESS").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 15_000) { composeRule.onAllNodesWithText("Android E2E answer").fetchSemanticsNodes().isNotEmpty() }
+        composeRule.onNodeWithText("Android E2E answer").assertIsDisplayed()
 
         val history = request("GET", "/api/v1/conversations/" + conversationId + "/messages", token = token)
         assertTrue(history.contains("real backend message"))
