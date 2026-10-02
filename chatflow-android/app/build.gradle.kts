@@ -11,11 +11,13 @@ android {
         applicationId = "com.chatflow.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.6.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080/\"")
-        buildConfigField("String", "WS_URL", "\"ws://10.0.2.2:8080/ws\"")
+        val apiBaseUrl = providers.gradleProperty("API_BASE_URL").orElse("http://10.0.2.2:8080/").get()
+        val wsUrl = providers.gradleProperty("WS_URL").orElse("ws://10.0.2.2:8080/ws").get()
+        buildConfigField("String", "API_BASE_URL", ""$apiBaseUrl"")
+        buildConfigField("String", "WS_URL", ""$wsUrl"")
     }
 
     buildFeatures {
